@@ -1,4 +1,4 @@
-import os, json, base64, gspread, requests
+import os, json, gspread, requests
 from oauth2client.service_account import ServiceAccountCredentials
 from flask import Flask, request, jsonify
 from datetime import datetime
@@ -12,21 +12,12 @@ AI_MODEL = 'llama-3.3-70b-versatile'
 TELEGRAM_BOT_TOKEN = os.environ['TELEGRAM_BOT_TOKEN']
 TELEGRAM_CHAT_ID = '7035558775'
 GOOGLE_SHEET_NAME = "Today's Patient Enquiries"
-GOOGLE_CREDS_B64 = os.environ['GOOGLE_CREDS_B64']
 
-# ---- GOOGLE SHEETS SETUP (with auto-padding) ----
-b64_string = GOOGLE_CREDS_B64.strip().replace(' ', '').replace('\n', '').replace('\r', '')
-# Add padding if necessary
-missing_padding = len(b64_string) % 4
-if missing_padding:
-    b64_string += '=' * (4 - missing_padding)
-
-creds_json = base64.b64decode(b64_string).decode('utf-8')
-with open('google_creds.json', 'w') as f:
-    f.write(creds_json)
-
+# ---- GOOGLE SHEETS SETUP (read from Render Secret File) ----
+# Render mounts secret files at /etc/secrets/
+CREDS_PATH = '/etc/secrets/google_creds.json'
 scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-creds = ServiceAccountCredentials.from_json_keyfile_name('google_creds.json', scope)
+creds = ServiceAccountCredentials.from_json_keyfile_name(CREDS_PATH, scope)
 client = gspread.authorize(creds)
 sheet = client.open(GOOGLE_SHEET_NAME).sheet1
 
