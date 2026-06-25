@@ -1,4 +1,4 @@
-import os, json, gspread, requests
+import os, json, base64, gspread, requests
 from oauth2client.service_account import ServiceAccountCredentials
 from flask import Flask, request, jsonify
 from datetime import datetime
@@ -12,14 +12,23 @@ AI_MODEL = 'llama-3.3-70b-versatile'
 TELEGRAM_BOT_TOKEN = os.environ['TELEGRAM_BOT_TOKEN']
 TELEGRAM_CHAT_ID = '7035558775'
 GOOGLE_SHEET_NAME = "Today's Patient Enquiries"
+GOOGLE_CREDS_B64 = os.environ['GOOGLE_CREDS_B64']
 
-# ---- GOOGLE SHEETS SETUP (reads from file directly) ----
+# ---- GOOGLE SHEETS SETUP (robust decoding) ----
+# Remove any whitespace the base64 string might have picked up
+b64_string = GOOGLE_CREDS_B64.replace(' ', '').replace('\n', '').replace('\r', '')
+creds_json = base64.b64decode(b64_string).decode('utf-8')
+
+# Write it to a temp file
+with open('google_creds.json', 'w') as f:
+    f.write(creds_json)
+
 scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
 creds = ServiceAccountCredentials.from_json_keyfile_name('google_creds.json', scope)
 client = gspread.authorize(creds)
 sheet = client.open(GOOGLE_SHEET_NAME).sheet1
 
-# ---- FUNCTIONS ----
+# ---- AI EXTRACTION ----
 def extract_patient_info(raw_text):
     prompt = f"""Extract from this patient enquiry:
 Return JSON with keys: name, issue, urgency (HIGH/MEDIUM/LOW), insurance, phone, contact_time.
@@ -34,6 +43,7 @@ Enquiry:
     resp.raise_for_status()
     return json.loads(resp.json()['choices'][0]['message']['content'])
 
+# ---- TELEGRAM ----
 def send_telegram(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {'chat_id': TELEGRAM_CHAT_ID, 'text': message, 'parse_mode': 'Markdown'}
