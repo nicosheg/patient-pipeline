@@ -112,7 +112,8 @@ def webhook():
 🕒 *{info.get('contact_time', 'N/A')}*
 
 ──────────────
-✓ Added to 60-Second Patient Pipeline"""
+──────────────
+⚡ 60-Second Patient Pipeline"""
     send_telegram(msg)
     return jsonify({'status': 'ok'})
 
