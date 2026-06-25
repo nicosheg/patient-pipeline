@@ -28,7 +28,7 @@ if not existing or existing[0] != headers:
 
 # ---- AI EXTRACTION ----
 def extract_patient_info(raw_text):
-       prompt = f"""Extract the following fields from this patient enquiry. Return ONLY a valid JSON object with these exact keys:
+    prompt = f"""Extract the following fields from this patient enquiry. Return ONLY a valid JSON object with these exact keys:
 name, issue, urgency, insurance, phone, contact_time.
 
 Rules:
@@ -44,10 +44,14 @@ Enquiry:
 {raw_text}
 
 JSON:"""
-    headers = {'Authorization': f'Bearer {AI_API_KEY}', 'Content-Type': 'application/json'}
-    data = {'model': AI_MODEL, 'messages': [{'role': 'user', 'content': prompt}],
-            'temperature': 0.0, 'response_format': {'type': 'json_object'}}
-    resp = requests.post(AI_API_URL, headers=headers, json=data, timeout=15)
+    api_headers = {'Authorization': f'Bearer {AI_API_KEY}', 'Content-Type': 'application/json'}
+    data = {
+        'model': AI_MODEL,
+        'messages': [{'role': 'user', 'content': prompt}],
+        'temperature': 0.0,
+        'response_format': {'type': 'json_object'}
+    }
+    resp = requests.post(AI_API_URL, headers=api_headers, json=data, timeout=15)
     resp.raise_for_status()
     return json.loads(resp.json()['choices'][0]['message']['content'])
 
@@ -83,7 +87,6 @@ def webhook():
     if not info:
         return jsonify({'error': 'Extraction failed'}), 500
 
-    # US format timestamp: "Jun 25, 2026 7:59 AM"
     now = datetime.now(timezone.utc).strftime('%b %d, %Y %I:%M %p')
 
     row = [
