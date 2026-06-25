@@ -11,7 +11,7 @@ AI_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
 AI_MODEL = 'llama-3.3-70b-versatile'
 TELEGRAM_BOT_TOKEN = os.environ['TELEGRAM_BOT_TOKEN']
 TELEGRAM_CHAT_ID = '7035558775'
-GOOGLE_SHEET_NAME = "Today's Patient Enquiries"
+GOOGLE_SHEET_NAME = "60-Second Patient Pipeline"
 CREDS_PATH = '/etc/secrets/google_creds.json'
 
 # ---- GOOGLE SHEETS ----
