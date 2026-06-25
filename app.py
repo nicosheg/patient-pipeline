@@ -12,13 +12,8 @@ AI_MODEL = 'llama-3.3-70b-versatile'
 TELEGRAM_BOT_TOKEN = os.environ['TELEGRAM_BOT_TOKEN']
 TELEGRAM_CHAT_ID = '7035558775'
 GOOGLE_SHEET_NAME = "Today's Patient Enquiries"
-GOOGLE_CREDS_JSON = os.environ['GOOGLE_CREDS_JSON']  # <-- now a JSON string, not base64
 
-# ---- GOOGLE SHEETS SETUP ----
-creds_dict = json.loads(GOOGLE_CREDS_JSON)
-with open('google_creds.json', 'w') as f:
-    json.dump(creds_dict, f)
-
+# ---- GOOGLE SHEETS SETUP (reads from file directly) ----
 scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
 creds = ServiceAccountCredentials.from_json_keyfile_name('google_creds.json', scope)
 client = gspread.authorize(creds)
