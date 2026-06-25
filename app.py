@@ -1,26 +1,30 @@
-import os, json, base64, gspread, requests
+import os, json, gspread, requests
 from oauth2client.service_account import ServiceAccountCredentials
 from flask import Flask, request, jsonify
 from datetime import datetime
 
 app = Flask(__name__)
 
+# ---- CONFIG ----
 AI_API_KEY = os.environ['AI_API_KEY']
 AI_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
 AI_MODEL = 'llama-3.3-70b-versatile'
 TELEGRAM_BOT_TOKEN = os.environ['TELEGRAM_BOT_TOKEN']
 TELEGRAM_CHAT_ID = '7035558775'
 GOOGLE_SHEET_NAME = "Today's Patient Enquiries"
-GOOGLE_CREDS_B64 = os.environ['GOOGLE_CREDS_B64']
+GOOGLE_CREDS_JSON = os.environ['GOOGLE_CREDS_JSON']  # <-- now a JSON string, not base64
 
-creds_json = base64.b64decode(GOOGLE_CREDS_B64).decode()
+# ---- GOOGLE SHEETS SETUP ----
+creds_dict = json.loads(GOOGLE_CREDS_JSON)
 with open('google_creds.json', 'w') as f:
-    f.write(creds_json)
+    json.dump(creds_dict, f)
+
 scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
 creds = ServiceAccountCredentials.from_json_keyfile_name('google_creds.json', scope)
 client = gspread.authorize(creds)
 sheet = client.open(GOOGLE_SHEET_NAME).sheet1
 
+# ---- FUNCTIONS ----
 def extract_patient_info(raw_text):
     prompt = f"""Extract from this patient enquiry:
 Return JSON with keys: name, issue, urgency (HIGH/MEDIUM/LOW), insurance, phone, contact_time.
@@ -43,6 +47,7 @@ def send_telegram(message):
     if not r.json().get('ok'):
         raise Exception(r.json().get('description', 'Telegram error'))
 
+# ---- WEBHOOK ----
 @app.route('/webhook', methods=['POST'])
 def webhook():
     data = request.get_json(force=True)
