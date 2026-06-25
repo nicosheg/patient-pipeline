@@ -28,17 +28,17 @@ if not existing or existing[0] != headers:
 
 # ---- AI EXTRACTION ----
 def extract_patient_info(raw_text):
-    prompt = f"""Extract from this patient enquiry. Return ONLY a JSON object with these keys:
+       prompt = f"""Extract the following fields from this patient enquiry. Return ONLY a valid JSON object with these exact keys:
 name, issue, urgency, insurance, phone, contact_time.
 
 Rules:
-- name: The ACTUAL patient's name, not the person filling the form.
+- name: The name of the person who needs dental treatment. Look for "my name is...", "I'm...", "this is...", or any person's name mentioned.
 - issue: Brief description of the dental problem.
-- urgency: HIGH, MEDIUM, or LOW. Dental pain, broken teeth, emergencies are HIGH.
-- insurance: Insurance provider name, or "None" if not mentioned.
+- urgency: HIGH, MEDIUM, or LOW. Dental pain, broken teeth, swelling, emergencies are HIGH. Routine checkups are LOW.
+- insurance: Insurance provider name (e.g., Delta Dental, Aetna, Guardian), or "None" if not mentioned.
 - phone: Any phone number mentioned.
 - contact_time: When they want to be called (e.g., "after 5pm", "before noon", "tomorrow morning").
-- If a field is missing, set it to "Not provided".
+- If you cannot find a field, set it to "Not provided".
 
 Enquiry:
 {raw_text}
