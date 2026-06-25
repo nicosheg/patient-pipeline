@@ -5,26 +5,20 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-# ---- CONFIG ----
 AI_API_KEY = os.environ['AI_API_KEY']
 AI_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
 AI_MODEL = 'llama-3.3-70b-versatile'
 TELEGRAM_BOT_TOKEN = os.environ['TELEGRAM_BOT_TOKEN']
 TELEGRAM_CHAT_ID = '7035558775'
 GOOGLE_SHEET_NAME = "Today's Patient Enquiries"
-GOOGLE_CREDS_JSON = os.environ['GOOGLE_CREDS_JSON']
 
-# ---- GOOGLE SHEETS SETUP (parse from env var) ----
-creds_dict = json.loads(GOOGLE_CREDS_JSON)
-with open('google_creds.json', 'w') as f:
-    json.dump(creds_dict, f)
-
+# Read from Render Secret File
+CREDS_PATH = '/etc/secrets/google_creds.json'
 scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-creds = ServiceAccountCredentials.from_json_keyfile_name('google_creds.json', scope)
+creds = ServiceAccountCredentials.from_json_keyfile_name(CREDS_PATH, scope)
 client = gspread.authorize(creds)
 sheet = client.open(GOOGLE_SHEET_NAME).sheet1
 
-# ---- AI EXTRACTION ----
 def extract_patient_info(raw_text):
     prompt = f"""Extract from this patient enquiry:
 Return JSON with keys: name, issue, urgency (HIGH/MEDIUM/LOW), insurance, phone, contact_time.
@@ -39,7 +33,6 @@ Enquiry:
     resp.raise_for_status()
     return json.loads(resp.json()['choices'][0]['message']['content'])
 
-# ---- TELEGRAM ----
 def send_telegram(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {'chat_id': TELEGRAM_CHAT_ID, 'text': message, 'parse_mode': 'Markdown'}
@@ -48,7 +41,6 @@ def send_telegram(message):
     if not r.json().get('ok'):
         raise Exception(r.json().get('description', 'Telegram error'))
 
-# ---- WEBHOOK ----
 @app.route('/webhook', methods=['POST'])
 def webhook():
     data = request.get_json(force=True)
