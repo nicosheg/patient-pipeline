@@ -1,7 +1,7 @@
 import os, json, gspread, requests
 from oauth2client.service_account import ServiceAccountCredentials
 from flask import Flask, request, jsonify
-from datetime import datetime
+from datetime import datetime, timezone
 
 app = Flask(__name__)
 
@@ -20,14 +20,30 @@ creds = ServiceAccountCredentials.from_json_keyfile_name(CREDS_PATH, scope)
 client = gspread.authorize(creds)
 sheet = client.open(GOOGLE_SHEET_NAME).sheet1
 
+# ---- ENSURE HEADERS ----
+headers = ['Date & Time', 'Patient Name', 'Phone', 'Issue', 'Urgency', 'Contact Time', 'Insurance', 'Status']
+existing = sheet.get_all_values()
+if not existing or existing[0] != headers:
+    sheet.insert_row(headers, 1)
+
 # ---- AI EXTRACTION ----
 def extract_patient_info(raw_text):
-    prompt = f"""Extract from this patient enquiry:
-Return JSON with keys: name, issue, urgency (HIGH/MEDIUM/LOW), insurance, phone, contact_time.
-If missing, set null. No extra text.
+    prompt = f"""Extract from this patient enquiry. Return ONLY a JSON object with these keys:
+name, issue, urgency, insurance, phone, contact_time.
+
+Rules:
+- name: The ACTUAL patient's name, not the person filling the form.
+- issue: Brief description of the dental problem.
+- urgency: HIGH, MEDIUM, or LOW. Dental pain, broken teeth, emergencies are HIGH.
+- insurance: Insurance provider name, or "None" if not mentioned.
+- phone: Any phone number mentioned.
+- contact_time: When they want to be called (e.g., "after 5pm", "before noon", "tomorrow morning").
+- If a field is missing, set it to "Not provided".
 
 Enquiry:
-{raw_text}"""
+{raw_text}
+
+JSON:"""
     headers = {'Authorization': f'Bearer {AI_API_KEY}', 'Content-Type': 'application/json'}
     data = {'model': AI_MODEL, 'messages': [{'role': 'user', 'content': prompt}],
             'temperature': 0.0, 'response_format': {'type': 'json_object'}}
@@ -44,16 +60,14 @@ def send_telegram(message):
     if not r.json().get('ok'):
         raise Exception(r.json().get('description', 'Telegram error'))
 
-# ---- WEBHOOK (now accepts both simple and Tally formats) ----
+# ---- WEBHOOK ----
 @app.route('/webhook', methods=['POST'])
 def webhook():
     data = request.get_json(force=True)
     raw_message = ''
 
-    # 1) Direct 'message' field (for our simple curl test)
     if 'message' in data:
         raw_message = data['message']
-    # 2) Nested Tally format
     elif 'data' in data and 'fields' in data['data']:
         for f in data['data']['fields']:
             if f.get('key') == 'message' or f.get('type') == 'TEXTAREA':
@@ -69,8 +83,19 @@ def webhook():
     if not info:
         return jsonify({'error': 'Extraction failed'}), 500
 
-    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    row = [now, info.get('name'), info.get('phone'), info.get('issue'), info.get('urgency'), 'New']
+    # US format timestamp: "Jun 25, 2026 7:59 AM"
+    now = datetime.now(timezone.utc).strftime('%b %d, %Y %I:%M %p')
+
+    row = [
+        now,
+        info.get('name', ''),
+        info.get('phone', ''),
+        info.get('issue', ''),
+        info.get('urgency', ''),
+        info.get('contact_time', ''),
+        info.get('insurance', ''),
+        'New'
+    ]
     sheet.append_row(row)
 
     urgency_emoji = {'HIGH': '🔥', 'MEDIUM': '⚠️', 'LOW': 'ℹ️'}
