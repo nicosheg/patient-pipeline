@@ -14,12 +14,14 @@ TELEGRAM_CHAT_ID = '7035558775'
 GOOGLE_SHEET_NAME = "Today's Patient Enquiries"
 GOOGLE_CREDS_B64 = os.environ['GOOGLE_CREDS_B64']
 
-# ---- GOOGLE SHEETS SETUP (robust decoding) ----
-# Remove any whitespace the base64 string might have picked up
-b64_string = GOOGLE_CREDS_B64.replace(' ', '').replace('\n', '').replace('\r', '')
-creds_json = base64.b64decode(b64_string).decode('utf-8')
+# ---- GOOGLE SHEETS SETUP (with auto-padding) ----
+b64_string = GOOGLE_CREDS_B64.strip().replace(' ', '').replace('\n', '').replace('\r', '')
+# Add padding if necessary
+missing_padding = len(b64_string) % 4
+if missing_padding:
+    b64_string += '=' * (4 - missing_padding)
 
-# Write it to a temp file
+creds_json = base64.b64decode(b64_string).decode('utf-8')
 with open('google_creds.json', 'w') as f:
     f.write(creds_json)
 
