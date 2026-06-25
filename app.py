@@ -12,12 +12,15 @@ AI_MODEL = 'llama-3.3-70b-versatile'
 TELEGRAM_BOT_TOKEN = os.environ['TELEGRAM_BOT_TOKEN']
 TELEGRAM_CHAT_ID = '7035558775'
 GOOGLE_SHEET_NAME = "Today's Patient Enquiries"
+GOOGLE_CREDS_JSON = os.environ['GOOGLE_CREDS_JSON']
 
-# ---- GOOGLE SHEETS SETUP (read from Render Secret File) ----
-# Render mounts secret files at /etc/secrets/
-CREDS_PATH = '/etc/secrets/google_creds.json'
+# ---- GOOGLE SHEETS SETUP (parse from env var) ----
+creds_dict = json.loads(GOOGLE_CREDS_JSON)
+with open('google_creds.json', 'w') as f:
+    json.dump(creds_dict, f)
+
 scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-creds = ServiceAccountCredentials.from_json_keyfile_name(CREDS_PATH, scope)
+creds = ServiceAccountCredentials.from_json_keyfile_name('google_creds.json', scope)
 client = gspread.authorize(creds)
 sheet = client.open(GOOGLE_SHEET_NAME).sheet1
 
